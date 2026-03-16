@@ -15,24 +15,33 @@ func NewHistoryRepository(db *sql.DB) *HistoryRepository {
 	return &HistoryRepository{db}
 }
 
-func (r *HistoryRepository) SaveGame(
-	playerID int,
-	g *game.Game,
-	result string,
-) error {
+func (r *HistoryRepository) SaveGame(playerID int, g *game.Game, result string) error {
 
-	playerCards := cardsToString(g.Player)
-	dealerCards := cardsToString(g.Dealer)
+	playerCards := ""
+	dealerCards := ""
 
-	_, err := r.db.Exec(
-		`INSERT INTO game_history
-		(player_id, player_cards, dealer_cards, player_value, dealer_value, bet, result)
-		VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+	for i, c := range g.Player {
+		if i > 0 {
+			playerCards += ","
+		}
+		playerCards += c.Rank + c.Suit
+	}
+
+	for i, c := range g.Dealer {
+		if i > 0 {
+			dealerCards += ","
+		}
+		dealerCards += c.Rank + c.Suit
+	}
+
+	_, err := r.db.Exec(`
+        INSERT INTO game_history
+        (player_id, player_cards, dealer_cards, bet, result)
+        VALUES ($1,$2,$3,$4,$5)
+    `,
 		playerID,
 		playerCards,
 		dealerCards,
-		game.HandValue(g.Player),
-		game.HandValue(g.Dealer),
 		g.Bet,
 		result,
 	)
