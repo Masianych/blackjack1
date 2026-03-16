@@ -133,7 +133,9 @@ func (h *Handler) Bet(w http.ResponseWriter, r *http.Request) {
 		g.Reveal = true
 		g.Over = true
 		g.Balance += g.Bet * 2
-		WriteGame(w, g, "Blackjack! Вы выиграли!")
+		msg := "Blackjack! You win"
+		WriteGame(w, g, msg)
+		h.saveGame(r, g, msg)
 		return
 	}
 	WriteGame(w, g, "")
