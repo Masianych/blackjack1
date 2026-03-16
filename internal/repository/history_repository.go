@@ -62,12 +62,12 @@ type GameHistory struct {
 func (r *HistoryRepository) GetHistory(playerID int) ([]GameHistory, error) {
 
 	rows, err := r.db.Query(`
-		SELECT player_cards, dealer_cards, bet, result, created_at
-		FROM game_history
-		WHERE player_id=$1
-		ORDER BY created_at DESC
-		LIMIT 20
-	`, playerID)
+        SELECT player_cards, dealer_cards, bet, result
+        FROM game_history
+        WHERE player_id=$1
+        ORDER BY created_at DESC
+        LIMIT 20
+    `, playerID)
 
 	if err != nil {
 		return nil, err
@@ -75,21 +75,24 @@ func (r *HistoryRepository) GetHistory(playerID int) ([]GameHistory, error) {
 
 	defer rows.Close()
 
-	var history []GameHistory
+	history := []GameHistory{}
 
 	for rows.Next() {
 
-		var h GameHistory
+		var g GameHistory
 
-		rows.Scan(
-			&h.PlayerCards,
-			&h.DealerCards,
-			&h.Bet,
-			&h.Result,
-			&h.CreatedAt,
+		err := rows.Scan(
+			&g.PlayerCards,
+			&g.DealerCards,
+			&g.Bet,
+			&g.Result,
 		)
 
-		history = append(history, h)
+		if err != nil {
+			return nil, err
+		}
+
+		history = append(history, g)
 	}
 
 	return history, nil
