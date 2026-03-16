@@ -62,7 +62,7 @@ func NewDB() (*sql.DB, error) {
 		return nil, err
 	}
 
-	fmt.Println("database connected")
+	fmt.Println("`database connected")
 
 	return db, nil
 }
