@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+    <meta charset="UTF-8">
+    <title>Blackjack</title>
+
+    <style>
+
+        body{
+            margin:0;
+            font-family:Arial;
+            background:#083c24;
+            color:white;
+            text-align:center;
+        }
+
+        h1{
+            margin-top:20px;
+        }
+
+        /* layout */
+
+        #layout{
+            display:flex;
+            justify-content:center;
+            align-items:flex-start;
+            gap:40px;
+            margin-top:30px;
+        }
+
+        #leaderboardBox{
+            width:260px;
+        }
+
+        #leaderboardBox table{
+            width:100%;
+            border-collapse:collapse;
+        }
+
+        #leaderboardBox th,#leaderboardBox td{
+            padding:8px;
+            border-bottom:1px solid rgba(255,255,255,0.2);
+        }
+
+        #historyBox{
+            width:900px;
+            margin:auto;
+            margin-top:40px;
+        }
+
+        #historyBox table{
+            width:100%;
+            border-collapse:collapse;
+        }
+
+        #historyBox th,#historyBox td{
+            padding:8px;
+            border-bottom:1px solid rgba(255,255,255,0.2);
+        }
+
+        /* game */
+
+        #table{
+            background:radial-gradient(circle,#0a5c2f,#06381c);
+            border:6px solid #caa44b;
+            border-radius:50px;
+            width:700px;
+            max-width:95%;
+            padding:30px;
+            box-shadow:0 0 40px rgba(0,0,0,0.6);
+        }
+
+        .cards{
+            display:flex;
+            justify-content:center;
+            gap:10px;
+            margin:20px;
+            flex-wrap:wrap;
+            min-height:140px;
+        }
+
+        .card{
+            width:90px;
+            height:130px;
+            opacity:0;
+            transform:translateY(-80px) rotate(-10deg);
+            transition:0.5s ease;
+        }
+
+        .card.show{
+            opacity:1;
+            transform:translateY(0) rotate(0deg);
+        }
+
+        .chips{
+            display:flex;
+            justify-content:center;
+            gap:12px;
+            flex-wrap:wrap;
+            margin:20px;
+        }
+
+        .chip{
+            width:60px;
+            height:60px;
+            border-radius:50%;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            font-weight:bold;
+            cursor:pointer;
+            border:3px solid white;
+            transition:0.4s;
+        }
+
+        .chip.red{background:#e74c3c}
+        .chip.blue{background:#3498db}
+        .chip.green{background:#2ecc71}
+        .chip.black{background:#333}
+
+        button{
+            padding:12px 20px;
+            font-size:16px;
+            border:none;
+            border-radius:10px;
+            cursor:pointer;
+            margin:5px;
+        }
+
+        #hitBtn{background:#2ecc71}
+        #standBtn{background:#e74c3c}
+        #betBtn{background:#3498db}
+        #clearBtn{background:#f39c12}
+        #againBtn{background:#9b59b6}
+
+    </style>
+
+</head>
+
+<body>
+
+<h1>🃏 Blackjack</h1>
+
+<div id="layout">
+
+    <!-- LEADERBOARD -->
+
+    <div id="leaderboardBox">
+
+        <h2>🏆 Leaderboard</h2>
+
+        <table>
+            <tr>
+                <th>Игрок</th>
+                <th>Баланс</th>
+                <th>Выиграно</th>
+            </tr>
+
+            <tbody id="leaderboard"></tbody>
+
+        </table>
+
+    </div>
+
+    <!-- GAME -->
+
+    <div id="table">
+
+        <div id="balance">Баланс: $1000</div>
+
+        <h3>Текущая ставка: $<span id="betAmount">0</span></h3>
+
+        <div class="chips">
+
+            <div class="chip red" onclick="addChip(this,10)">10</div>
+            <div class="chip blue" onclick="addChip(this,50)">50</div>
+            <div class="chip green" onclick="addChip(this,100)">100</div>
+            <div class="chip black" onclick="addChip(this,500)">500</div>
+
+        </div>
+
+        <button id="clearBtn">Сбросить ставку</button>
+        <button id="betBtn">Сделать ставку</button>
+
+        <h2>Дилер</h2>
+
+        <div id="dealerCards" class="cards"></div>
+        <div>Очки: <span id="dealerTotal">?</span></div>
+
+        <h2>Игрок</h2>
+
+        <div id="playerCards" class="cards"></div>
+        <div>Очки: <span id="playerTotal">0</span></div>
+
+        <br>
+
+        <button id="hitBtn">Взять карту</button>
+        <button id="standBtn">Остановиться</button>
+
+        <h2 id="result"></h2>
+
+        <button id="againBtn" style="display:none;">Играть снова</button>
+
+    </div>
+
+</div>
+
+<!-- HISTORY -->
+
+<div id="historyBox">
+
+    <h2>📜 История игр</h2>
+
+    <table>
+
+        <tr>
+            <th>Ваши карты</th>
+            <th>Карты дилера</th>
+            <th>Ставка</th>
+            <th>Результат</th>
+        </tr>
+
+        <tbody id="history"></tbody>
+
+    </table>
+
+</div>
+
+<script>
+
+    const leaderboardTable=document.getElementById("leaderboard")
+    const historyTable=document.getElementById("history")
+
+    const dealerCards=document.getElementById("dealerCards")
+    const playerCards=document.getElementById("playerCards")
+
+    const balanceText=document.getElementById("balance")
+    const betText=document.getElementById("betAmount")
+
+    const dealerTotal=document.getElementById("dealerTotal")
+    const playerTotal=document.getElementById("playerTotal")
+
+    const result=document.getElementById("result")
+
+    const hitBtn=document.getElementById("hitBtn")
+    const standBtn=document.getElementById("standBtn")
+    const betBtn=document.getElementById("betBtn")
+    const clearBtn=document.getElementById("clearBtn")
+    const againBtn=document.getElementById("againBtn")
+
+    let bet=0
+    let gameRunning=false
+
+    async function ensureNickname(){
+
+        let name=localStorage.getItem("nickname")
+
+        if(!name){
+
+            name=prompt("Введите ник")
+
+            if(!name) name="Player"
+
+            localStorage.setItem("nickname",name)
+
+            await api("/api/setname","POST",{name:name})
+
+        }
+
+    }
+
+    async function loadLeaderboard(){
+
+        let res=await fetch("/api/leaderboard")
+        let data=await res.json()
+
+        leaderboardTable.innerHTML=""
+
+        data.forEach(p=>{
+
+            leaderboardTable.innerHTML+=`
+<tr>
+<td>${p.name ?? "Player"}</td>
+<td>$${p.balance ?? 0}</td>
+<td>$${p.total_won ?? 0}</td>
+</tr>
+`
+
+        })
+
+    }
+
+    async function loadHistory(){
+
+        let res=await fetch("/api/history")
+        let data=await res.json()
+
+        historyTable.innerHTML=""
+
+        data.forEach(g=>{
+
+            historyTable.innerHTML+=`
+<tr>
+<td>${g.player_cards}</td>
+<td>${g.dealer_cards}</td>
+<td>$${g.bet}</td>
+<td>${g.result}</td>
+</tr>
+`
+
+        })
+
+    }
+
+    async function api(url,method="GET",data=null){
+
+        const options={
+            method:method,
+            credentials:"include",
+            headers:{}
+        }
+
+        if(data){
+            options.headers["Content-Type"]="application/json"
+            options.body=JSON.stringify(data)
+        }
+
+        const res=await fetch(url,options)
+        return await res.json()
+
+    }
+
+    function renderCards(container,cards){
+
+        container.innerHTML=""
+
+        cards.forEach((card,i)=>{
+
+            let img=document.createElement("img")
+            img.src=cardImage(card)
+            img.className="card"
+
+            container.appendChild(img)
+
+            setTimeout(()=>{img.classList.add("show")},i*200)
+
+        })
+
+    }
+
+    function cardImage(card){
+
+        if(card==="🂠")
+            return "https://deckofcardsapi.com/static/img/back.png"
+
+        let rank=card.slice(0,-1)
+        let suit=card.slice(-1)
+
+        const suitMap={"♠":"S","♥":"H","♦":"D","♣":"C"}
+
+        const rankMap={
+            "A":"A","K":"K","Q":"Q","J":"J",
+            "10":"0","9":"9","8":"8","7":"7",
+            "6":"6","5":"5","4":"4","3":"3","2":"2"
+        }
+
+        return `https://deckofcardsapi.com/static/img/${rankMap[rank]}${suitMap[suit]}.png`
+
+    }
+
+    function update(data){
+
+        balanceText.innerText="Баланс: $"+data.balance
+
+        renderCards(playerCards,data.player)
+        renderCards(dealerCards,data.dealer)
+
+        playerTotal.innerText=data.playerValue
+
+        if(data.dealer.includes("🂠"))
+            dealerTotal.innerText="?"
+        else
+            dealerTotal.innerText=data.dealerValue
+
+        result.innerText=data.result || ""
+
+        if(data.gameOver){
+
+            loadLeaderboard()
+            loadHistory()
+
+            gameRunning=false
+
+            hitBtn.disabled=true
+            standBtn.disabled=true
+
+            againBtn.style.display="inline-block"
+
+            return
+        }
+
+        /* игра продолжается */
+
+        hitBtn.disabled=false
+        standBtn.disabled=false
+
+    }
+
+    function addChip(el,value){
+
+        if(gameRunning) return
+
+        bet+=value
+        betText.innerText=bet
+
+    }
+
+    clearBtn.onclick=()=>{
+
+        if(gameRunning) return
+
+        bet=0
+        betText.innerText=0
+
+    }
+
+    betBtn.onclick=async ()=>{
+
+        if(gameRunning) return
+        if(bet===0) return
+
+        gameRunning=true
+        againBtn.style.display="none"
+
+        let data=await api("/api/bet","POST",{bet:bet})
+
+        update(data)
+
+    }
+
+    hitBtn.onclick=async ()=>{
+
+        if(!gameRunning) return
+
+        hitBtn.disabled=true
+        standBtn.disabled=true
+
+        let data=await api("/api/hit","POST")
+
+        update(data)
+
+    }
+
+    standBtn.onclick=async ()=>{
+
+        if(!gameRunning) return
+
+        hitBtn.disabled=true
+        standBtn.disabled=true
+
+        let data=await api("/api/stand","POST")
+
+        update(data)
+
+    }
+
+    againBtn.onclick=()=>{
+
+        bet=0
+        betText.innerText=0
+
+        dealerCards.innerHTML=""
+        playerCards.innerHTML=""
+
+        dealerTotal.innerText="?"
+        playerTotal.innerText="0"
+
+        result.innerText=""
+
+        gameRunning=false
+
+        againBtn.style.display="none"
+
+    }
+
+    async function load(){
+
+        let data=await api("/api/state")
+
+        update(data)
+
+    }
+
+    window.onload=async ()=>{
+
+        await ensureNickname()
+
+        await load()
+
+        loadLeaderboard()
+
+        loadHistory()
+
+    }
+
+</script>
+
+</body>
+</html>
