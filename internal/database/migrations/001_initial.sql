@@ -1,5 +1,14 @@
 -- Схема: логин по нику (username)
--- Без DROP — данные сохраняются при перезапуске сервера
+-- Если на Render старая схема (session_id) — пересоздаём таблицы
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='players' AND column_name='session_id') THEN
+    DROP TABLE IF EXISTS game_history;
+    DROP TABLE IF EXISTS players;
+    DROP TABLE IF EXISTS users;
+  END IF;
+END $$;
+
 CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
     username VARCHAR(50) UNIQUE NOT NULL,
@@ -28,4 +37,10 @@ CREATE TABLE IF NOT EXISTS game_history (
 );
 
 CREATE INDEX IF NOT EXISTS idx_game_history_player_id ON game_history(player_id);
-CREATE INDEX IF NOT EXISTS idx_players_user_id ON players(user_id);
+-- Индекс только если колонка user_id есть (новая схема)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='players' AND column_name='user_id') THEN
+    CREATE INDEX IF NOT EXISTS idx_players_user_id ON players(user_id);
+  END IF;
+END $$;
