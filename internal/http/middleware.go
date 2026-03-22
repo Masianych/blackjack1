@@ -5,16 +5,31 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"strconv"
 	"time"
 
 	"blackjack/internal/game"
-	"blackjack/internal/session"
+	"blackjack/internal/repository"
 	"blackjack/internal/store"
 )
 
 type contextKey string
 
-const gameKey contextKey = "game"
+const (
+	gameKey     contextKey = "game"
+	userIDKey   contextKey = "user_id"
+	playerIDKey contextKey = "player_id"
+)
+
+func GetUserID(r *http.Request) (int, bool) {
+	id, ok := r.Context().Value(userIDKey).(int)
+	return id, ok
+}
+
+func GetPlayerID(r *http.Request) (int, bool) {
+	id, ok := r.Context().Value(playerIDKey).(int)
+	return id, ok
+}
 
 func GetGame(r *http.Request) *game.Game {
 
@@ -66,7 +81,9 @@ func RequireJSON(next http.Handler) http.Handler {
 
 		if r.Method == http.MethodPost &&
 			r.URL.Path != "/api/hit" &&
-			r.URL.Path != "/api/stand" {
+			r.URL.Path != "/api/stand" &&
+			r.URL.Path != "/api/logout" &&
+			r.URL.Path != "/api/buy-chips" {
 
 			if r.Header.Get("Content-Type") != "application/json" {
 				http.Error(w, "content-type must be application/json", 415)
@@ -79,48 +96,28 @@ func RequireJSON(next http.Handler) http.Handler {
 	})
 }
 
-func Session(store *store.MemoryStore) func(http.Handler) http.Handler {
-
+func Session(store *store.MemoryStore, playerRepo *repository.PlayerRepository) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
-
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			userID, ok := r.Context().Value(userIDKey).(int)
+			if !ok {
+				next.ServeHTTP(w, r)
+				return
+			}
 
-			cookie, err := r.Cookie("session_id")
-
-			var id string
-			var g *game.Game
-
-			if err != nil {
-
-				id = session.NewID()
-
-				http.SetCookie(w, &http.Cookie{
-					Name:     "session_id",
-					Value:    id,
-					Path:     "/",
-					HttpOnly: true,
-				})
-
-				g = &game.Game{Balance: 1000}
-
-				store.Set(id, g)
-
-			} else {
-
-				id = cookie.Value
-
-				gameStored, ok := store.Get(id)
-
-				if !ok {
-					g = &game.Game{Balance: 1000}
-					store.Set(id, g)
-				} else {
-					g = gameStored
+			id := "user_" + strconv.Itoa(userID)
+			g, ok := store.Get(id)
+			if !ok {
+				player, err := playerRepo.GetByUserID(userID)
+				balance := 1000
+				if err == nil && player != nil {
+					balance = player.Balance
 				}
+				g = &game.Game{Balance: balance}
+				store.Set(id, g)
 			}
 
 			ctx := context.WithValue(r.Context(), gameKey, g)
-
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}

@@ -13,6 +13,7 @@ type Handler struct {
 	store       *store.MemoryStore
 	playerRepo  *repository.PlayerRepository
 	historyRepo *repository.HistoryRepository
+	userRepo    *repository.UserRepository
 }
 type Response struct {
 	Player      []string `json:"player"`
@@ -29,12 +30,13 @@ func NewHandler(
 	store *store.MemoryStore,
 	playerRepo *repository.PlayerRepository,
 	historyRepo *repository.HistoryRepository,
+	userRepo *repository.UserRepository,
 ) *Handler {
-
 	return &Handler{
 		store:       store,
 		playerRepo:  playerRepo,
 		historyRepo: historyRepo,
+		userRepo:    userRepo,
 	}
 }
 
@@ -270,10 +272,11 @@ func (h *Handler) Leaderboard(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, players)
 }
 func (h *Handler) History(w http.ResponseWriter, r *http.Request) {
-
-	cookie, _ := r.Cookie("session_id")
-
-	playerID, _ := h.playerRepo.GetOrCreate(cookie.Value)
+	playerID, ok := r.Context().Value(playerIDKey).(int)
+	if !ok {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
 
 	history, err := h.historyRepo.GetHistory(playerID)
 	if err != nil {
@@ -284,14 +287,8 @@ func (h *Handler) History(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, history)
 }
 func (h *Handler) saveGame(r *http.Request, g *game.Game, msg string) {
-
-	cookie, err := r.Cookie("session_id")
-	if err != nil {
-		return
-	}
-
-	playerID, err := h.playerRepo.GetOrCreate(cookie.Value)
-	if err != nil {
+	playerID, ok := r.Context().Value(playerIDKey).(int)
+	if !ok {
 		return
 	}
 
@@ -307,10 +304,11 @@ func (h *Handler) saveGame(r *http.Request, g *game.Game, msg string) {
 
 }
 func (h *Handler) SetName(w http.ResponseWriter, r *http.Request) {
-
-	cookie, _ := r.Cookie("session_id")
-
-	playerID, _ := h.playerRepo.GetOrCreate(cookie.Value)
+	playerID, ok := r.Context().Value(playerIDKey).(int)
+	if !ok {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
 
 	var req struct {
 		Name string `json:"name"`
